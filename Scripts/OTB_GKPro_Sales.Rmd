@@ -1,0 +1,203 @@
+---
+title: "Impact of GKPro Sponsored Skins Match on OTB & GKPro Webtraffic "
+author: "Christopher Loan"
+date: "12/18/2020"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    toc_collapsed: true
+    highlight: kate
+---
+
+```{r setup, include=F}
+knitr::opts_chunk$set(
+  message = F,
+	echo = F,
+	warning = F,
+	include = T
+)
+
+library(tidyverse)
+library(rio)
+library(here)
+library(janitor)
+library(lubridate)
+#library(lm.beta)
+library(lavaan)
+library(knitr)
+```
+
+# Background 
+
+With COVID-19 decreasing the amount of disc golf content in 2020, I found myself really watching a lot of "skins" matches hosted by GK Productions. [Here's a link to one of the last this season](https://www.youtube.com/watch?v=7T55QNlVaOc). \n
+
+For those unfamiliar, these are essentially a single-round match-play event (if you're familiar with traditional golf, aka "ball golf" to disc golfers). In this format, there is not an overall prize at the end, but instead the format gives cash prizes for taking the best (i.e., lowest) score on each hole. For example, if 3 of 4 players take par on hole 1 and only 1 player gets a birdie, that player gets $50. If 2 (or more) players tie the best score on a given hole, the cash "rolls over" to increase the value of the next hole. Typically, these are filmed around the time (and at the location of) a larger tournament or Disc Golf Pro Tour Event. They feature top pros showing their human side and are a blast to watch. \n
+
+"Only The Best" Discs aka [OTB Discs](https://otbdiscs.com/) has sponsored these events all year, and they've offered free shipping on their products as a sponsorship promotion. I personally found myself fighting the urge to purchase a disc from them any time I watched a skins match (and often failed the urge). For that reason, I wanted to dive into the data and see what impact these had on OTB webtraffic. As a note, I would prefer to follow this up with sales data, but that's not publicly available. We should note that someone may look at OTB's website without purchasing anything.
+
+# Method
+
+## Data Sources: 
+
+### [Google Trends](trends.google.com):
+
+    * This gave me search popularity for both Google and YouTube. 
+
+    * I compared Google's traffic for "OTB Discs" and "Only the best discs" (I merged the numbers for these) to YouTube's traffic for "GK Pro". 
+
+    * Here's what Google says this about the values they give on webtraffic: "Numbers represent search interest relative to the highest point on the chart for the given region and time. A value of 100 is the peak popularity for the term. A value of 50 means that the term is half as popular. A score of 0 means there was not enough data for this term."
+
+### [GKPro's YouTube](https://www.youtube.com/channel/UC96v9uB8ZKe1TFdYzBOGnpw):
+
+    * While webtraffic tells me how much GK pro is searched in a week, it doesn't tell me if a sponsored skins match was released this week or not. 
+
+    * I manually checked all of the weeks and made a dichotomous (i.e., "Yes" or "No") variable to let me compare webtraffic for OTB on weeks with and without a skins match.  
+
+
+## Analytic Plan:
+
+1) Plot average web traffic for OTB on weeks with and without coverage, along with standard error.
+
+2) Plot web traffic over time for googling OTB's website alongside people searching YouTube for GKPro.
+
+3) Plot the same graph as 2, but adding in trends for searching YouTube and Google for "Disc Golf" generally. I did this because of seasonal trends in disc golf; we may expect more googling of OTB during the summer when more people play regardless of the videos
+
+4) conduct a formal statistical analysis to see if the effect of a sponsored video significantly increased sales *through* GKPro videos, *controlling for* the direct effect of the sponsorship on OTB's website and seasonal fluxuations in searches of YouTube and Google for "Disc Golf". This goes one step farther than seeing if there is an association. It's tough to explain without statistical terms, but this is called "mediation" and it checks if the variation in the link from $ Sponsorship --> GKPro_{webtraffic} $ is the same as the variation in $GKPro_{webtraffic} --> OTB_{webtraffic}$.
+
+In total this provides a formal test of if the entire path exists, i.e.:
+
+$$Sponsorship --> GKPro_{webtraffic} --> OTB_{webtraffic}$$
+
+Again, I did this *controlling for the variation of webtraffic for "Disc Golf" generally* in both YouTube and Google as a proxy for general disc golf popularity, though, I know that's a flawed one.
+
+# Results & Discussion
+
+## Significant Mean Differences
+```{r}
+dat <- import(here("Data", "OTB_and_GKPro.csv"))
+dat <- dat %>% clean_names()
+dat$week <- mdy(dat$week)
+dat <- dat %>% mutate(sponsored = factor(sponsored_skins_video, labels = c('No','Yes')), 
+                      total_otb = otb_discs_united_states + only_the_best_discs_united_states,
+                      Google_DG = disc_golf_united_states, 
+                      YouTube_DG = disc_golf_youtube_united_states)
+dat_small <- dat %>% select(week, sponsored, total_otb, gk_pro_united_states, Google_DG, YouTube_DG)
+plot_dat <- dat_small %>% 
+  pivot_longer(cols = total_otb:YouTube_DG, 
+               names_to = "term", 
+               values_to = "searches") %>% 
+  mutate(`Search Term` = factor(term, labels = c("OTB", "GKPro", "Google DG", "YouTube DG")))
+```
+
+Figure 1 shows that OTB webtraffic is higher in weeks with a skins match (average webtraffic = 57.38), compared to weeks without a skins mathc (average webtraffic = 20.24). Because the standard error bars do not overlap, we see that this is a significant difference.
+
+```{r}
+plot_dat %>%
+  filter(term == "total_otb") %>% 
+  group_by(sponsored) %>% 
+  summarize(`Average Searches` = mean(searches), 
+            `Standard Error of Searches` = sd(searches)/sqrt(n())) %>% 
+  ungroup() %>% 
+  ggplot(aes(x = sponsored, y = `Average Searches`)) +
+  geom_col(aes(fill = sponsored)) + 
+  geom_errorbar(aes(ymin=`Average Searches`-`Standard Error of Searches`, 
+                    ymax=`Average Searches`+`Standard Error of Searches`), width=.2,
+                 position= position_dodge(.9)) +
+  theme_minimal() + 
+  labs(title = "Figure 1. Average Web Traffic on Weeks with and without GK Pro Skins Matches",
+       subtitle = "Error Bars Show Standard Error of the Mean",
+       y = "Web Traffic*",
+       x = "Skins Match Same Week",
+       fill = "Skins Match\nSame Week")
+```
+
+##### *Note: From Google Trends: "Numbers represent search interest relative to the highest point on the chart for the given region and time. A value of 100 is the peak popularity for the term. A value of 50 means that the term is half as popular. A score of 0 means there was not enough data for this term."
+
+## Trends over Time
+
+Since we have this nice time-ordered data, I plotted these trends over time. Figure 2 shows Google Searches for OTB Discs alongside YouTube Searches for GK Pro. I highlighted the weeks with sponsored skins matches, which suggests people may be Googling OTB more often during weeks with a GKPro sponsored skins match. Something important to note here is that OTB actually sponsors other videos, too, so we'd expect some noise here from other videos that are not skins matches (i.e., other GK Pro videos that aren't skins matches, videos from their sponsored players, etc.). A better model would include those sources of variation, but I didn't want to scour the internet for all their sponsored players' videos.
+
+```{r}
+plot_dat %>% 
+  filter(`Search Term` %in% c('OTB', 'GKPro')) %>% 
+  mutate(sponsored_continuous = if_else(sponsored == "Yes", 100, 0)) %>% 
+  ggplot() + 
+  geom_line(aes(x = week, y = searches, color = `Search Term`)) +
+  geom_col(aes(x = week, y = sponsored_continuous), position = "dodge", fill = "aquamarine", alpha = 0.15)+
+  labs(title = "Figure 2. OTB Discs Google Searches & GK Pro YouTube Searches Over Time",
+       subtitle = "Weeks with Sponsored Skins Matches are Highlighted with Vertical Bars",
+       y = "Web Traffic*", 
+       x = "Date") +
+  scale_color_manual(values = c("cornflowerblue","coral3", "gray30", "tan"))+
+  ylim(0,100)+
+  theme_minimal() 
+```
+
+One further note: with disc golf fluxuating in its popularity seasonally, I figured I should ensure trends in OTB sales were not simply following seasonal trends. To account for increased searches of "Disc Golf" in the summer, I plotted this in Figure 3.
+
+```{r}
+plot_dat %>%
+  #mutate(sponsored_continuous = if_else(sponsored == "Yes", 100, 0)) %>%
+  ggplot() +
+  geom_line(aes(x = week, y = searches, color = `Search Term`)) +
+  #geom_col(aes(x = week, y = sponsored_continuous), position = "dodge", fill = "aquamarine", alpha = 0.15)+
+  labs(title = "Figure 3. Webtraffic for OTB & GKPro, alongside general `Disc Golf` Searches",
+       y = "Web Traffic*",
+       x = "Date") +
+  scale_color_manual(values = c("cornflowerblue","coral3", "gray30", "tan"))+
+  ylim(0,100)+
+  theme_minimal()
+```
+
+##### *Note: From Google Trends: "Numbers represent search interest relative to the highest point on the chart for the given region and time. A value of 100 is the peak popularity for the term. A value of 50 means that the term is half as popular. A score of 0 means there was not enough data for this term."\n
+
+As a statistician, I am really hesitant to state anything definitively without some inferential statistics. So I did some! I used something called "structural equation modeling" which is a subset of statistics that I do a lot in my day-to-day job and professional research. I used a package called `{lavaan}` to do so. I was worried about having so few data points, so I actually did something called "bootstrapping" where I made a statistical model and then simulated the results 5000 times. The 5000 estimates are then used to give some confidence in your findings. This is a huge oversimplification, but I wanted to spare you the details.\n
+
+## Inferential Statistics Results
+
+With 95% confidence, we can say that GK Pro videos increase webtraffic for OTB, *even controlling for seasonal variation in disc golf popularity*. Statistically, we can divide up the influence of these sponsored videos on OTB web traffic into: 
+
+    (a) variability that is "carried through" the GK Pro videos' variability, and
+    (b) unique influence that is not carried through it. 
+    
+You can think of the unique variation as "random noise" that we control for, and the "carried through" variability as the  effect of these sponsored videos *through* GK Pro webtraffic to OTB's webtraffic.\n
+
+The model shows that an increase in GK Pro viewership by 1 percent of their relative webtraffic corresponds to an increase of 0.43% (±0.14%) (remember google's units are odd). I don't know the scale of either of their webtraffic, but this seems like a substantial increase. Visually, this is $GKPro_{webtraffic} --> OTB_{webtraffic}$.
+
+GK Pro is also (probably) feeling this benefit: if we compare the weeks with sponsored videos to weeks without, their webtraffic is up 28% (±7.24%) on weeks with sponsored videos compared to weeks without sponsored videos! This is visually $ Sponsorship --> GKPro_{webtraffic} $. The researcher in me knows that this value is conflated with lots of spurrious associations we cannot assess, however, this estimate *is* controlling for the popularity of "Disc Golf" searches on both YouTube and Google during those weeks. With GK Pro being sponsored most weeks, though, it seems like their popularity may just rise and fall with release of a video (duh!), but that relies on *someone* sponsoring it (and it happens to be OTB). \n
+
+So returning to the prior point of the variation *through* GK Pro, which is what we are most interested in and is shown here: 
+
+$$Sponsorship --> GKPro_{webtraffic} --> OTB_{webtraffic}$$
+This suggests that much of the variation in OTB webtraffic is *the same variation* as that between their sponsorship and GK Pro's webtraffic. This is the "mediated" effect we're interested in. In essence, OTB is boosting their own webtraffic by 12.20% (±6.1%) for every video they sponsor. They can use this to determine how "worth it" these videos are to them. \n
+
+As for me, I just wanted to show them it was worth it to their bottom line so I can keep getting these videos :)
+
+# Analytic Details
+
+I included the output from the regression below, but anyone who is familiar with statistics, but not `{lavaan}`, should note that you should *ignore the p-value and trust the lower- and upper-confidence intervals instead* (significant if they do not overlap with 0). In short, this is because bootstrapping ignores the normal distribution from which p-values are derived. The defined parameter "c" is the product of the paths a*b, which is the most common way to formally test mediation in structural equation modeling.
+
+```{r, echo = T, include = T, cache = T}
+
+mediation_mod1 <- '
+total_otb ~ a*gk_pro_united_states + sponsored + Google_DG + YouTube_DG
+
+gk_pro_united_states ~ b*sponsored+ Google_DG + YouTube_DG
+
+c:= a*b
+'
+
+med_fit_boot<- sem(mediation_mod1, 
+                   data = dat, 
+                   estimator = "ML",
+                   se = "bootstrap", 
+                   bootstrap = 5000,
+                   parallel = c("multicore"))
+
+parameterEstimates(med_fit_boot, 
+                   level = .95, 
+                   boot.ci.type = "perc", 
+                   output = "pretty", 
+                   stand = T) #adjusted bootstrap percentile (BCa) method,but with no correction for acceleration (only for bias).
+```
