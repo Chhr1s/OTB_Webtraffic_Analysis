@@ -75,7 +75,7 @@ We also see an early peak in the model that is before any sponsorsed skins match
 
 
 ![](OTB_GKPro_Sales_files/figure-html/unnamed-chunk-3-1.png)<!-- -->
-Figure 3 shows the same webtraffic plot, but with the increases in Google and YouTube searches for "Disc Golf" to account for seasonal changes in trends. The early spikes which weren't associated with sponsorship of a GK Pro match really seem to line up with seasonal trends. But the trends increase much higher than the sales. But later in the season, it looks like OTB sales went way up compared to the small bump they got from a general increase from the season's start.
+Figure 3 shows the same webtraffic plot, but with the increases in Google and YouTube searches for "Disc Golf" to account for seasonal changes in trends. The early spikes which weren't associated with sponsorship of a GK Pro match really seem to line up with seasonal trends. But later in the season, it looks like OTB webtraffic went way up compared to the small bump they got from a general increase from the season's start.
 
 ![](OTB_GKPro_Sales_files/figure-html/unnamed-chunk-4-1.png)<!-- -->
 

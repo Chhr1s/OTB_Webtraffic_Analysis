@@ -137,7 +137,7 @@ plot_dat %>%
   ylim(0,100)+
   theme_minimal() 
 ```
-Figure 3 shows the same webtraffic plot, but with the increases in Google and YouTube searches for "Disc Golf" to account for seasonal changes in trends. The early spikes which weren't associated with sponsorship of a GK Pro match really seem to line up with seasonal trends. But the trends increase much higher than the sales. But later in the season, it looks like OTB sales went way up compared to the small bump they got from a general increase from the season's start.
+Figure 3 shows the same webtraffic plot, but with the increases in Google and YouTube searches for "Disc Golf" to account for seasonal changes in trends. The early spikes which weren't associated with sponsorship of a GK Pro match really seem to line up with seasonal trends. But later in the season, it looks like OTB webtraffic went way up compared to the small bump they got from a general increase from the season's start.
 
 ```{r}
 plot_dat %>%
