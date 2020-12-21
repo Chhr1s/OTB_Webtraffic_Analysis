@@ -11,22 +11,7 @@ output:
     highlight: kate
 ---
 
-```{r setup, include=F}
-knitr::opts_chunk$set(
-  message = F,
-	echo = F,
-	warning = F,
-	include = T
-)
 
-library(tidyverse)
-library(rio)
-library(here)
-library(janitor)
-library(lubridate)
-library(lavaan)
-library(knitr)
-```
 
 # Background 
 
@@ -71,45 +56,12 @@ To be clear, point #4 will be done *controlling for the variation of webtraffic 
 # Results & Discussion
 
 ## Significant Mean Differences (Step 1)
-```{r}
-dat <- import(here("Data", "OTB_and_GKPro.csv"))
-dat <- dat %>% clean_names()
-dat$week <- mdy(dat$week)
-dat <- dat %>% mutate(sponsored = factor(sponsored_skins_video, labels = c('No','Yes')), 
-                      total_otb = otb_discs_united_states + only_the_best_discs_united_states,
-                      Google_DG = disc_golf_united_states, 
-                      YouTube_DG = disc_golf_youtube_united_states)
-dat_small <- dat %>% select(week, sponsored, total_otb, gk_pro_united_states, Google_DG, YouTube_DG)
-plot_dat <- dat_small %>% 
-  pivot_longer(cols = total_otb:YouTube_DG, 
-               names_to = "term", 
-               values_to = "searches") %>% 
-  mutate(`Search Term` = factor(term, labels = 
-                                  c( "GKPro", "Google DG", "OTB", "YouTube DG")))
-```
+
 
 Figure 1 shows that OTB webtraffic is higher in weeks with a skins match (average webtraffic = 57.38), compared to weeks without a skins mathc (average webtraffic = 20.24). Because the standard error bars do not overlap, we can be confident that these are significantly different amounts of webtraffic
 
 
-```{r}
-plot_dat %>%
-  filter(term == "total_otb") %>% 
-  group_by(sponsored) %>% 
-  summarize(`Average Searches` = mean(searches), 
-            `Standard Error of Searches` = sd(searches)/sqrt(n())) %>% 
-  ungroup() %>% 
-  ggplot(aes(x = sponsored, y = `Average Searches`)) +
-  geom_col(aes(fill = sponsored)) + 
-  geom_errorbar(aes(ymin=`Average Searches`-`Standard Error of Searches`, 
-                    ymax=`Average Searches`+`Standard Error of Searches`), width=.2,
-                 position= position_dodge(.9)) +
-  theme_minimal() + 
-  labs(title = "Figure 1. Average Web Traffic on Weeks with and without GK Pro Skins Matches",
-       subtitle = "Error Bars Show Standard Error of the Mean",
-       y = "OTB Web Traffic*",
-       x = "Skins Match Same Week",
-       fill = "Skins Match\nSame Week")
-```
+![](OTB_GKPro_Sales_files/figure-html/unnamed-chunk-2-1.png)<!-- -->
 
 ##### *Note: From Google Trends: "Numbers represent search interest relative to the highest point on the chart for the given region and time. A value of 100 is the peak popularity for the term. A value of 50 means that the term is half as popular. A score of 0 means there was not enough data for this term."
 
@@ -122,36 +74,10 @@ Something important to note here is that OTB actually sponsors other videos, too
 We also see an early peak in the model that is before any sponsorsed skins match. A guess I have here is simply that this is the start of the professional disc golf season, and that watching professionial disc golf increases sales of discs. These early spikes that occur for both GK Pro and OTB are likely from the Las Vegas Challenge and the Memorial Championship, which both occured in those times.
 
 
-```{r}
-plot_dat %>% 
-  filter(`Search Term` %in% c('OTB', 'GKPro')) %>% 
-  mutate(sponsored_continuous = if_else(sponsored == "Yes", 100, 0)) %>% 
-  ggplot() + 
-  geom_line(aes(x = week, y = searches, color = `Search Term`)) +
-  geom_col(aes(x = week, y = sponsored_continuous), position = "dodge", fill = "aquamarine", alpha = 0.15)+
-  labs(title = "Figure 2. OTB Discs Google Searches & GK Pro YouTube Searches Over Time",
-       subtitle = "Weeks with Sponsored Skins Matches are Highlighted with Vertical Bars",
-       y = "Web Traffic*", 
-       x = "Date") +
-  scale_color_manual(values = c("cornflowerblue","coral3", "gray30", "tan"))+
-  ylim(0,100)+
-  theme_minimal() 
-```
+![](OTB_GKPro_Sales_files/figure-html/unnamed-chunk-3-1.png)<!-- -->
 Figure 3 shows the same webtraffic plot, but with the increases in Google and YouTube searches for "Disc Golf" to account for seasonal changes in trends. The early spikes which weren't associated with sponsorship of a GK Pro match really seem to line up with seasonal trends. But the trends increase much higher than the sales. But later in the season, it looks like OTB sales went way up compared to the small bump they got from a general increase from the season's start.
 
-```{r}
-plot_dat %>%
-  #mutate(sponsored_continuous = if_else(sponsored == "Yes", 100, 0)) %>%
-  ggplot() +
-  geom_line(aes(x = week, y = searches, color = `Search Term`)) +
-  #geom_col(aes(x = week, y = sponsored_continuous), position = "dodge", fill = "aquamarine", alpha = 0.15)+
-  labs(title = "Figure 3. Webtraffic for OTB & GKPro, alongside general `Disc Golf` Searches",
-       y = "Web Traffic*",
-       x = "Date") +
-  scale_color_manual(values = c("cornflowerblue", "gray30", "coral3", "tan"))+
-  ylim(0,100)+
-  theme_minimal()
-```
+![](OTB_GKPro_Sales_files/figure-html/unnamed-chunk-4-1.png)<!-- -->
 
 ##### *Note: From Google Trends: "Numbers represent search interest relative to the highest point on the chart for the given region and time. A value of 100 is the peak popularity for the term. A value of 50 means that the term is half as popular. A score of 0 means there was not enough data for this term."\n
 
@@ -193,8 +119,8 @@ It is worth noting that when we control for YouTube and Google searches for "Dis
 
 I included minimal output from the regression below, and you can see it's significant if the `ci.lower` and `ci.upper` have the same term (i.e., - or +), which represent a range of confidence in our findings at 95%. The defined parameter "mediated_effect" is the product of the paths a*b, which is the most common way to formally test mediation in structural equation modeling.
 
-```{r, echo = T, include = T, cache = T}
 
+```r
 mediation_mod1 <- '
 total_otb ~ a*gk_pro_united_states + d*sponsored + Google_DG + YouTube_DG
 
@@ -221,4 +147,23 @@ table %>%
          -c(std.lv:std.nox)
          ) %>% 
   filter(op!='~~')
+```
+
+```
+## 
+## Regressions:
+##                          Estimate ci.lower ci.upper
+##   total_otb ~                                      
+##     gk_pr_ntd_ (a)          0.431    0.146    0.699
+##     sponsored  (d)         14.476   -2.415   29.171
+##     Google_DG               0.163   -0.148    0.464
+##     YouTube_DG              0.292   -0.038    0.666
+##   gk_pro_united_states ~                           
+##     sponsored  (b)         28.326   13.912   43.055
+##     Google_DG               0.328   -0.058    0.687
+##     YouTube_DG             -0.358   -0.740    0.066
+## 
+## Defined Parameters:
+##                    Estimate ci.lower ci.upper
+##     mediated_effct   12.196    2.667   26.357
 ```
